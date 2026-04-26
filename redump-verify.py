@@ -136,7 +136,7 @@ if __name__ == "__main__":
                 results["matched"].append({"file": filepath_display, "sha1": file_hashes['sha1']})
             else:
                 logging.info("[x] FAILED: No match found in the provided DAT file. This might be a bad dump.")
-                results["failed"].append({"file": filepath_display, "sha1": file_hashes['sha1']})
+                results["failed"].append({"file": filepath_display, "sha1": file_hashes['sha1'], "reason": "NO_MATCH"})
         else:
             results["unverified"].append(filepath_display)
 
@@ -152,7 +152,8 @@ if __name__ == "__main__":
                             hashes = calculate_hashes_from_stream(f, zinfo.file_size, zinfo.filename)
                         process_match(f"{filepath}/{zinfo.filename}", hashes)
             except zipfile.BadZipFile:
-                logging.error(f"Error: Invalid ZIP file -> {filepath}")
+                logging.error(f"[x] FAILED: Invalid ZIP file -> {filepath}")
+                results["failed"].append({"file": filepath, "sha1": "", "reason": "INVALID_ZIP"})
         else:
             logging.info(f"\n--- Verifying: {filepath} ---")
             hashes = calculate_hashes(filepath)
@@ -174,7 +175,9 @@ if __name__ == "__main__":
     if args.result:
         json_output = {
             "matched": {os.path.basename(item["file"]): item["sha1"] for item in results["matched"]},
-            "failed": {os.path.basename(item["file"]): item["sha1"] for item in results["failed"]}
+            "failed": {
+                os.path.basename(item["file"]): {"sha1": item["sha1"], "reason": item["reason"]} for item in results["failed"]
+            }
         }
         try:
             with open(args.result, "w", encoding="utf-8") as f:
